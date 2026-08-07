@@ -33,8 +33,11 @@ the repo root (not the subfolder) and override the build settings:
 - Build command: `npm run build:libs && npm run build --workspace docs/components`
 - Output directory: `docs/components/dist`
 
-`vercel.json` at the repo root already encodes the demo app's settings, so that
-project needs no manual configuration beyond the environment variable.
+Build command and output directory are set **per project in the Vercel
+dashboard**, not in `vercel.json`. All three projects share one repo, so a
+`buildCommand` in `vercel.json` would apply to all of them and break two. The
+committed `vercel.json` therefore contains only a static-hosting rewrite, which
+is safe for all three.
 
 ## Netlify
 

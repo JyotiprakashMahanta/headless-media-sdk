@@ -14,10 +14,10 @@ Data source: [Pexels](https://www.pexels.com/api/) (photos + videos).
 
 | | |
 |---|---|
-| Demo app | _<add deployed URL>_ |
+| Demo app | https://headless-media-sdk-web.vercel.app/ |
 | SDK docs | _<add deployed URL>_ |
 | Component docs | _<add deployed URL>_ |
-| Repo | _<add GitHub URL>_ |
+| Repo | https://github.com/JyotiprakashMahanta/headless-media-sdk |
 | AI chat transcripts | _<add link(s)>_ |
 
 ---
