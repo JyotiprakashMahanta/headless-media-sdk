@@ -15,10 +15,14 @@ Data source: [Pexels](https://www.pexels.com/api/) (photos + videos).
 | | |
 |---|---|
 | Demo app | https://headless-media-sdk-web.vercel.app/ |
-| SDK docs | _<add deployed URL>_ |
-| Component docs | _<add deployed URL>_ |
+| SDK docs | https://headless-media-sdk-docs.vercel.app/ |
+| Component docs | https://headless-media-sdk-components.vercel.app/ |
 | Repo | https://github.com/JyotiprakashMahanta/headless-media-sdk |
 | AI chat transcripts | _<add link(s)>_ |
+
+The component docs deploy has **no API key and makes no network calls** — every
+demo on it runs on plain fixture objects. That it works at all is the proof that
+`media-ui-react` is independent of the SDK.
 
 ---
 
