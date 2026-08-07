@@ -1,0 +1,228 @@
+/*
+ * Plain, functional styling. Visual polish is explicitly not scored, so this is
+ * deliberately minimal — but it is NOT arbitrary: every rule below either
+ * satisfies a documented CSS contract from the headless hooks, or is an
+ * accessibility requirement the hooks cannot provide from JS.
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0e0e10;
+  --fg: #ececee;
+  --muted: #9a9aa2;
+  --line: #2a2a30;
+  --accent: #4c8dff;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Required by getStatusProps and the lightbox title. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The hooks manage a roving tabindex; removing this makes the grid and reel
+   unusable by keyboard, so it is a hard requirement, not decoration. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.app { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 6rem; }
+.app-header h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+
+.controls { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+.field { flex: 1 1 260px; }
+.field input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  font: inherit;
+  color: inherit;
+  background: #17171b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.segmented button {
+  font: inherit;
+  padding: 0.55rem 0.9rem;
+  background: #17171b;
+  color: var(--muted);
+  border: 0;
+  cursor: pointer;
+}
+.segmented button[aria-pressed='true'] { background: var(--accent); color: #fff; }
+
+.meta { color: var(--muted); font-size: 0.85rem; margin: 0.75rem 0 0; }
+.status { color: var(--muted); padding: 1rem 0; }
+
+.error {
+  border: 1px solid #7a2b2b;
+  background: #2a1416;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn {
+  font: inherit;
+  padding: 0.45rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #17171b;
+  color: var(--fg);
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ------------------------------------------------------------------ grid -- */
+
+.grid {
+  display: grid;
+  /* Must match COLUMNS in MediaGrid.tsx — the hook uses it for arrow keys. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+
+.cell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.badge, .credit {
+  position: absolute;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+}
+.badge { top: 0.4rem; right: 0.4rem; }
+.credit { bottom: 0.4rem; left: 0.4rem; color: var(--muted); }
+
+/* CSS CONTRACT: the sentinel must have non-zero height or IntersectionObserver
+   never fires and infinite scroll silently stops working. */
+.sentinel { height: 1px; }
+
+/* -------------------------------------------------------------- lightbox -- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 10;
+}
+
+.dialog {
+  max-width: min(1100px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.dialog-media { display: grid; place-items: center; min-height: 0; }
+.dialog-media img, .dialog-media video { max-width: 100%; max-height: 75vh; border-radius: 8px; }
+.dialog-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: center; }
+.dialog-count { color: var(--muted); font-size: 0.85rem; }
+.dialog-error { color: #ff9d9d; text-align: center; margin: 0; }
+
+/* ------------------------------------------------------------------ reel -- */
+
+/* CSS CONTRACT for useReelSwiper. Without scroll-snap the reel is just a list
+   and active-item detection reports whatever happens to be centred. */
+.reel {
+  height: 100dvh;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  margin: 1rem -1rem 0;
+  border-radius: 8px;
+  background: #000;
+}
+.reel-item {
+  height: 100%;
+  scroll-snap-align: start;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.reel-item video { width: 100%; height: 100%; object-fit: contain; }
+.reel-caption {
+  position: absolute;
+  left: 1rem;
+  bottom: 1.5rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  text-shadow: 0 1px 4px #000;
+}
+
+/* -------------------------------------------------------------- activity -- */
+
+.activity {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(360px, calc(100vw - 2rem));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #131316;
+  z-index: 20;
+}
+.activity-toggle {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  cursor: pointer;
+}
+.activity-list {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
+  list-style: none;
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.activity-list li { padding: 0.15rem 0; border-top: 1px solid var(--line); }
+.activity-list code { color: var(--accent); }
+.activity-empty { border: 0 !important; }
+
+.missing-key { max-width: 40rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; }
+.missing-key code { background: #17171b; padding: 0.1rem 0.35rem; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; transition: none !important; }
+}

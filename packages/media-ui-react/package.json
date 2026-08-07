@@ -1,0 +1,25 @@
+{
+  "name": "media-ui-react",
+  "version": "0.1.0",
+  "description": "Headless React UI primitives: Grid, Lightbox, Reel Swiper. Ships behaviour and accessibility, never styles. Knows nothing about any SDK or data source.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "react": ">=18"
+  }
+}

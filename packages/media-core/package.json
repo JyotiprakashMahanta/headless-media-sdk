@@ -1,0 +1,24 @@
+{
+  "name": "media-core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic media SDK core. Zero UI, zero React, zero DOM.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {},
+  "peerDependencies": {}
+}

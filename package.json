@@ -1,0 +1,39 @@
+{
+  "name": "headless-media-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless media SDK ecosystem: framework-agnostic core, thin platform wrappers, pure-UI component libraries, and one app that wires them together.",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "docs/*"
+  ],
+  "scripts": {
+    "build:libs": "tsc -b packages/media-core packages/media-react packages/media-native packages/media-ui-react packages/media-ui-native",
+    "build:app": "npm run build --workspace apps/web",
+    "build:docs": "npm run build --workspace docs/sdk && npm run build --workspace docs/components",
+    "build": "npm run build:libs && npm run build:app && npm run build:docs",
+    "dev": "npm run build:libs && npm run dev --workspace apps/web",
+    "dev:docs:sdk": "npm run dev --workspace docs/sdk",
+    "dev:docs:components": "npm run dev --workspace docs/components",
+    "typecheck": "tsc -b --force packages/media-core packages/media-react packages/media-native packages/media-ui-react packages/media-ui-native",
+    "test": "node --test packages/media-core/test/*.test.mjs",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "verify": "npm run check:boundaries && npm run build:libs && npm test",
+    "clean": "node -e \"['packages/media-core','packages/media-react','packages/media-native','packages/media-ui-react','packages/media-ui-native'].forEach(p=>require('fs').rmSync(p+'/dist',{recursive:true,force:true}))\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.21"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

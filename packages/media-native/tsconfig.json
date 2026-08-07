@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // No "DOM": if a `document.` or `window.` sneaks into the native wrapper
+    // it will not compile, which is the point.
+    "lib": ["ES2022"],
+    "jsx": "react-jsx",
+    "types": ["react"]
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../media-core" }]
+}

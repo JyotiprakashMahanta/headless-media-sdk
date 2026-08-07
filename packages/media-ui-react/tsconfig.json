@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["react"]
+  },
+  "include": ["src/**/*"]
+  // No "references": this package must not depend on media-core or the
+  // wrappers, so it has no project references at all. scripts/check-boundaries.mjs
+  // fails the build if an import ever appears.
+}

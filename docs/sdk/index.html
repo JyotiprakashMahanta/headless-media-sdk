@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>media-core &amp; wrappers — SDK docs</title>
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<header>
+  <h1>Media SDK</h1>
+  <p class="lede"><code>media-core</code> + <code>media-react</code> + <code>media-native</code></p>
+  <nav>
+    <a href="#architecture">Architecture</a>
+    <a href="#auth">Auth</a>
+    <a href="#core">Core API</a>
+    <a href="#events">Events</a>
+    <a href="#errors">Errors</a>
+    <a href="#cache">Cache</a>
+    <a href="#react">React</a>
+    <a href="#native">Native</a>
+  </nav>
+</header>
+
+<main>
+
+<section id="architecture">
+  <h2>Architecture</h2>
+  <pre class="tree">
+app ──────▶ media-react  ──────▶ media-core
+ │          media-native ──────▶ media-core
+ └────────▶ media-ui-react     (imports nothing of ours)
+            media-ui-native    (imports nothing of ours)
+  </pre>
+  <ul>
+    <li><strong>Core imports nothing.</strong> It compiles with <code>"lib": ["ES2022"], "types": []</code> — no DOM, no Node, no React. If someone writes <code>document.</code> in it, it does not compile.</li>
+    <li><strong>Wrappers are the only packages that import core.</strong> They contain no URLs, no response mapping, no provider knowledge — only React lifecycle work.</li>
+    <li><strong>Components import neither.</strong> They are generic over the item type.</li>
+  </ul>
+  <p><code>npm run check:boundaries</code> fails the build on any violation, checking both declared dependencies and actual import specifiers.</p>
+</section>
+
+<section id="auth">
+  <h2>Auth</h2>
+  <p>The API key is passed once and captured in a closure inside the transport layer (<code>src/client/http.ts</code>). It is never stored on an instance property, never returned, never part of a cache key, never in an event payload, and never in an error message or <code>endpoint</code> field.</p>
+<pre><code>import { createMediaClient } from 'media-core';
+
+const client = createMediaClient({
+  apiKey: process.env.PEXELS_API_KEY,
+  // optional
+  baseUrl: 'https://api.pexels.com',
+  fetch: myFetch,          // inject for tests, proxies, or a CLI
+  cache: { ttlMs: 300_000, maxEntries: 200 },  // or `false`
+  logEvents: true,         // attaches the console listener
+  defaultPerPage: 24,
+});</code></pre>
+  <div class="note">
+    <strong>Browser reality check.</strong> Pexels has no OAuth and no token exchange, so a browser-only app must ship the key to the client. The design confines it to one module so that pointing <code>baseUrl</code> at your own proxy — and dropping the key entirely — is a one-line change with no other code touched.
+  </div>
+  <p>For scripts and CLIs there is also a module singleton: <code>configureMedia({ apiKey })</code> then <code>getMediaClient()</code>. <strong>Do not use it from React</strong> — it is invisible to tests and leaks across SSR requests. <code>MediaProvider</code> calls <code>createMediaClient</code> instead.</p>
+</section>
+
+<section id="core">
+  <h2>Core API</h2>
+
+  <h3><code>client.search(query, options?)</code></h3>
+<pre><code>const page = await client.search({
+  query: 'mountains',
+  kind: 'photo',        // 'photo' | 'video'
+  page: 1,
+  perPage: 24,          // clamped to 1..80
+  orientation: 'landscape',
+  size: 'large',
+  locale: 'en',
+}, { signal, forceRefresh });</code></pre>
+
+  <h3><code>client.curated(query?, options?)</code></h3>
+  <p>Trending feed. <code>{ kind, page, perPage }</code>. Same return type.</p>
+
+  <h3><code>client.getById(id, options?)</code></h3>
+  <p>Ids are namespaced — <code>"photo:2014422"</code>, <code>"video:2499611"</code> — because the photo and video endpoints have overlapping numeric id spaces.</p>
+
+  <h3>Return types</h3>
+<pre><code>interface MediaPage {
+  items: readonly MediaItem[];
+  page: number;
+  perPage: number;
+  totalResults: number | null;
+  hasMore: boolean;
+  nextPage: number | null;
+}
+
+interface MediaItem {
+  id: string;              // "photo:123"
+  kind: 'photo' | 'video';
+  sourceUrl: string;       // provider page, for attribution
+  width: number;
+  height: number;
+  aspectRatio: number;     // reserve grid space before load
+  placeholderColor: string | null;
+  alt: string;
+  author: { id, name, profileUrl };
+  thumbnailUrl: string;    // grid
+  previewUrl: string;      // display / playable video
+  downloadUrl: string;     // highest quality
+  durationSeconds: number | null;
+  renditions: readonly MediaRendition[];  // ascending by width
+}</code></pre>
+  <p class="note"><strong>These types are ours, not Pexels'.</strong> Raw provider JSON exists only inside <code>src/client/pexels.ts</code>. Swapping to Unsplash means writing a sibling of that one file — no hook, component or app code changes.</p>
+
+  <h3><code>client.download(item, { surface })</code></h3>
+  <p>Returns <code>{ url, filename, item }</code> and emits <code>download</code>. It does <em>not</em> save a file: core has no DOM. Core owns "which URL and what filename"; the platform owns "how bytes reach disk". That split is why the same call works in a browser, in React Native and in a CLI.</p>
+
+  <h3><code>client.trackView(item, { surface })</code></h3>
+  <p>Emits <code>view</code>. Surfaces used by the demo app: <code>grid</code>, <code>lightbox</code>, <code>reel</code>.</p>
+</section>
+
+<section id="events">
+  <h2>Events</h2>
+<pre><code>const off = client.on('download', (event) => { /* … */ });
+const offAll = client.onAny((event) => { /* … */ });
+off();  // unsubscribe — idempotent</code></pre>
+  <table>
+    <thead><tr><th>Event</th><th>Payload</th></tr></thead>
+    <tbody>
+      <tr><td><code>view</code></td><td><code>{ item, surface, at }</code></td></tr>
+      <tr><td><code>download</code></td><td><code>{ item, url, surface, at }</code></td></tr>
+      <tr><td><code>search</code></td><td><code>{ query, kind, page, resultCount, at }</code></td></tr>
+      <tr><td><code>error</code></td><td><code>{ code, message, endpoint, at }</code></td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li><code>on()</code> returns an unsubscribe function rather than requiring a matching <code>off()</code> — it drops straight into a <code>useEffect</code> cleanup.</li>
+    <li>Listeners are copied before dispatch, so unsubscribing from inside a listener cannot corrupt the current dispatch.</li>
+    <li>A throwing listener is caught and never breaks the SDK or the other listeners.</li>
+    <li>Payloads never contain the API key. Events are an activity log; analytics sinks have no business seeing credentials.</li>
+    <li>A default console listener is attached unless <code>logEvents: false</code>. The app can subscribe independently at the same time — the demo's Activity panel does exactly that.</li>
+  </ul>
+</section>
+
+<section id="errors">
+  <h2>Errors</h2>
+  <p>Everything thrown is a <code>MediaError</code> with a <code>code</code>. Branch on the code, never the message.</p>
+  <table>
+    <thead><tr><th>code</th><th>Class</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>auth</code></td><td>MediaAuthError</td><td>401/403 — key rejected</td></tr>
+      <tr><td><code>rate_limit</code></td><td>MediaRateLimitError</td><td>429 — has <code>retryAfterSeconds</code></td></tr>
+      <tr><td><code>not_found</code></td><td>MediaNotFoundError</td><td>404</td></tr>
+      <tr><td><code>invalid_request</code></td><td>MediaError</td><td>other 4xx</td></tr>
+      <tr><td><code>network</code></td><td>MediaNetworkError</td><td>offline, DNS, CORS, 5xx</td></tr>
+      <tr><td><code>aborted</code></td><td>MediaAbortError</td><td>superseded request — hooks swallow it</td></tr>
+      <tr><td><code>parse</code></td><td>MediaError</td><td>body was not JSON</td></tr>
+    </tbody>
+  </table>
+  <p><code>error.retryable</code> is true for <code>network</code> and <code>rate_limit</code>. <code>error.endpoint</code> is path + sorted query, with no credential in it.</p>
+</section>
+
+<section id="cache">
+  <h2>Cache &amp; de-duplication</h2>
+  <p>One <code>Map</code> solves two problems that share a key:</p>
+  <ol>
+    <li><strong>Caching</strong> — the same page inside the TTL does not hit the network twice. Grids remount constantly and Pexels allows 200 requests/hour on free keys.</li>
+    <li><strong>De-duplication</strong> — three components asking for the same page in the same tick send one request and all await it. React 18 StrictMode alone doubles every request in dev without this.</li>
+  </ol>
+<pre><code>client.cacheStats();  // { size, inflight, hits, misses, deduped }
+client.clearCache();</code></pre>
+  <p>Cache keys sort their params, so <code>?a=1&amp;b=2</code> and <code>?b=2&amp;a=1</code> share an entry. The API key is deliberately not part of the key — it does not change the response shape, and keys end up in logs. A rejected request is never cached, so a transient failure cannot poison a key.</p>
+  <p>No <code>localStorage</code>, no IndexedDB: core must run in a worker or a CLI, and persistence is a policy decision belonging to whoever embeds the SDK.</p>
+</section>
+
+<section id="react">
+  <h2><code>media-react</code></h2>
+<pre><code>&lt;MediaProvider apiKey={KEY} logEvents&gt;&lt;App /&gt;&lt;/MediaProvider&gt;</code></pre>
+  <table>
+    <thead><tr><th>Hook</th><th>Returns</th></tr></thead>
+    <tbody>
+      <tr><td><code>useMediaSearch({ query, kind, perPage, orientation, size, locale, enabled })</code></td><td><code>{ items, isLoading, isLoadingMore, error, hasMore, page, totalResults, loadMore, refresh }</code></td></tr>
+      <tr><td><code>useCuratedMedia({ kind, perPage, enabled })</code></td><td>identical shape — so one grid can render either feed</td></tr>
+      <tr><td><code>useMediaItem(id, { initialItem })</code></td><td><code>{ item, isLoading, error }</code></td></tr>
+      <tr><td><code>useMediaEvent(type, handler)</code></td><td>—</td></tr>
+      <tr><td><code>useMediaEvents(handler)</code></td><td>—</td></tr>
+      <tr><td><code>useMediaActivity({ limit, types })</code></td><td><code>MediaEvent[]</code>, newest first</td></tr>
+      <tr><td><code>useMediaDownload()</code></td><td><code>{ download, pendingId, error }</code></td></tr>
+      <tr><td><code>useMediaClient()</code></td><td>the raw client — escape hatch</td></tr>
+      <tr><td><code>useDebouncedValue(value, ms)</code></td><td>debounced value</td></tr>
+    </tbody>
+  </table>
+  <p>Design notes worth knowing:</p>
+  <ul>
+    <li><code>items</code> is already accumulated across pages. Keeping your own array and concatenating will double every item.</li>
+    <li><code>loadMore</code> is referentially stable and already no-ops while loading or when <code>hasMore</code> is false.</li>
+    <li><code>isLoading</code> is first-page-only; <code>isLoadingMore</code> is appending. Using one for both blanks the grid on every page.</li>
+    <li>Event handlers are stored in a ref, so inline arrow functions create exactly one subscription per mount.</li>
+    <li>Stale responses are dropped by a monotonic request token — aborting alone is not enough, since an already-resolved promise can still land after the input changed.</li>
+    <li>Every type the app needs is re-exported, so the app never lists <code>media-core</code> as a dependency.</li>
+  </ul>
+</section>
+
+<section id="native">
+  <h2><code>media-native</code></h2>
+  <p>Same hook names, same return shapes, so feature code reads identically on both platforms. Two differences:</p>
+  <ul>
+    <li><code>usePagedMedia</code> also returns <code>onEndReached</code>, pre-guarded for <code>FlatList</code> — which fires repeatedly during a fling, unlike a web IntersectionObserver.</li>
+    <li><code>useMediaDownload</code> uses the OS share sheet (<code>Share.share</code>, falling back to <code>Linking.openURL</code>) instead of an anchor element. Swapping in <code>expo-file-system</code> would change nothing above that line — which is the argument for the core/wrapper split.</li>
+  </ul>
+  <p class="note"><code>react-native</code> is an <em>optional</em> peer dependency and is not installed in this repo. A repo-level typecheck shim (<code>types/react-native.d.ts</code>) declares exactly the RN surface these packages use, so they still typecheck and still fail the build if they drift. See the README for the reasoning.</p>
+</section>
+
+</main>
+
+<footer>
+  <p>Built for the FotoOwl take-home. Components documentation is a separate deployment.</p>
+</footer>
+</body>
+</html>

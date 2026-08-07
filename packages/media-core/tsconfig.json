@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // Deliberately ES-only: no "DOM", no "@types/react", no "@types/react-native".
+    // If someone adds a `document.` or a React import to this package it will not
+    // compile, which is the cheapest possible enforcement of "core is portable".
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src/**/*"]
+}
